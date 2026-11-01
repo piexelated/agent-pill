@@ -1,11 +1,11 @@
 [[plugin]]
 id = "piexelated/agent-pill"
 name = "Agent Pill"
-version = "0.1.0"
+version = "0.2.0"
 author = "piexelated"
 license = "MIT"
 icon = "robot"
-description = "Shows how many T3 Code subagents are working."
+description = "Shows how many T3 Code agents are working, in the style of its Dynamic Island."
 plugin_api = 24
 tags = ["ai", "developer"]
 dependencies = ["sqlite3"]
