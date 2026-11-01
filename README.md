@@ -32,27 +32,19 @@ The pill hides when nothing is working or T3 Code isn't running.
 You need Noctalia 5 and `sqlite3` on your `PATH`.
 
 ```sh
-git clone https://github.com/piexelated/agent-pill ~/Projects/agent-pill
+noctalia msg plugins source add agent-pill git https://github.com/piexelated/agent-pill
+noctalia msg plugins enable piexelated/agent-pill
 ```
 
-Add this to your Noctalia `config.toml`:
+Then open Noctalia's settings and add Agent Pill to a bar.
+
+For the black capsule in the screenshots, define the widget in `config.toml` and put `t3_agents` in a bar section:
 
 ```toml
-[plugins]
-enabled = ["piexelated/agent-pill"]
-
-[[plugins.source]]
-name = "agent-pill"
-kind = "path"
-location = "~/Projects/agent-pill"
-enabled = true
-
 [widget.t3_agents]
 type = "piexelated/agent-pill:agents"
 capsule_fill = "#000000"
 ```
-
-Then add `t3_agents` to a bar section, such as `start = ["launcher", "t3_agents"]`.
 
 ## How it works
 
