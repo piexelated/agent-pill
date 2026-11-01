@@ -14,31 +14,25 @@
 
 ## What it shows
 
-The pill copies the design of T3 Code's iOS Dynamic Island: a black capsule, a bare T3 mark tinted by phase, and a bold count.
+| Pill | When |
+|---|---|
+| <img src="docs/images/working.png" alt="Working pill showing 4" height="30"> | Agents are running and nothing needs you. |
+| <img src="docs/images/approval.png" alt="Approval pill showing 4" height="30"> | A thread is waiting for your approval. |
+| <img src="docs/images/input.png" alt="Input pill showing 4" height="30"> | A thread is waiting for your answer. |
+| <img src="docs/images/out-of-date.png" alt="Out of date pill" height="30"> | The plugin can't read T3 Code's state. The tooltip has the error. |
 
-| Pill | Phase | When |
-|---|---|---|
-| <img src="docs/images/working.png" alt="Working pill showing 4" height="30"> | Working | Agents are running and nothing needs you. |
-| <img src="docs/images/approval.png" alt="Approval pill showing 4" height="30"> | Approval | A thread is waiting for your approval. |
-| <img src="docs/images/input.png" alt="Input pill showing 4" height="30"> | Input | A thread is waiting for your answer. |
-| <img src="docs/images/out-of-date.png" alt="Out of date pill" height="30"> | Out of date | The plugin can't read T3 Code's state. The tooltip has the error. |
-
-The number is every active thread plus its live subagents, so 3 threads and 1 subagent show `4`. Hover the pill to see each thread and its status.
-
-The pill hides when nothing is working or T3 Code isn't running.
+The count is active threads plus their subagents. Hover for each thread's status. The pill hides when nothing is running.
 
 ## Install
 
-You need Noctalia 5 and `sqlite3` on your `PATH`.
+Requires Noctalia 5 and `sqlite3` on your `PATH`.
 
 ```sh
 noctalia msg plugins source add agent-pill git https://github.com/piexelated/agent-pill
 noctalia msg plugins enable piexelated/agent-pill
 ```
 
-Then open Noctalia's settings and add Agent Pill to a bar.
-
-For the black capsule in the screenshots, define the widget in `config.toml` and put `t3_agents` in a bar section:
+Add Agent Pill to a bar in Noctalia's settings. For the black capsule shown above, define the widget in `config.toml` and put `t3_agents` in a bar section:
 
 ```toml
 [widget.t3_agents]
@@ -48,10 +42,8 @@ capsule_fill = "#000000"
 
 ## How it works
 
-Every 2 seconds the widget runs one read-only query on `~/.t3/userdata/statev2.sqlite`. It needs no token and never writes to the database. The phase rules match the ones the T3 Code server uses.
-
-That database is T3 Code's private schema, so an update can break the query. If it does, the pill shows `Out of date` with SQLite's error in the tooltip.
+Every 2 seconds the widget runs one read-only query on `~/.t3/userdata/statev2.sqlite`. No token, no writes. The schema is T3 Code's private one, so an update can break the query; the pill then shows `Out of date`.
 
 ## License
 
-The code is MIT. The T3 mark belongs to its owners, and this project isn't affiliated with T3 Code or Noctalia.
+MIT. Not affiliated with T3 Code or Noctalia; the T3 mark belongs to its owners.
