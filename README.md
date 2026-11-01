@@ -40,9 +40,9 @@ type = "piexelated/agent-pill:agents"
 capsule_fill = "#000000"
 ```
 
-## How it works
+## How it works?
 
-Every 2 seconds the widget runs one read-only query on `~/.t3/userdata/statev2.sqlite`. No token, no writes. The schema is T3 Code's private one, so an update can break the query; the pill then shows `Out of date`.
+Every 2 seconds the widget runs one read-only query on `~/.t3/userdata/statev2.sqlite`. Works for now 
 
 ## License
 
