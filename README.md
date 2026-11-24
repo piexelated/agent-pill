@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="docs/images/bar.png" alt="Noctalia bar with Agent Pill between the clock and the media pill, showing 4 agents working" width="680">
+  <img src="docs/images/bar.png" alt="Noctalia bar with the T3 Code pill showing 4 agents and the Orca pill showing 2, next to the clock" width="680">
 </p>
 
 <h1 align="center">Agent Pill</h1>
 
-<p align="center">How many T3 Code agents are working, right on your Noctalia bar.</p>
+<p align="center">How many T3 Code and Orca agents are working, right on your Noctalia bar.</p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Noctalia-5-7dd3fc?style=flat-square&labelColor=000000" alt="Noctalia 5">
@@ -14,36 +14,49 @@
 
 ## What it shows
 
-| Pill | When |
-|---|---|
-| <img src="docs/images/working.png" alt="Working pill showing 4" height="30"> | Agents are running and nothing needs you. |
-| <img src="docs/images/approval.png" alt="Approval pill showing 4" height="30"> | A thread is waiting for your approval. |
-| <img src="docs/images/input.png" alt="Input pill showing 4" height="30"> | A thread is waiting for your answer. |
-| <img src="docs/images/out-of-date.png" alt="Out of date pill" height="30"> | The plugin can't read T3 Code's state. The tooltip has the error. |
+Each app gets its own pill. A pill hides when nothing is running.
 
-The count is active threads plus their subagents. Hover for each thread's status. The pill hides when nothing is running.
+| T3 Code | Orca | When |
+|---|---|---|
+| <img src="docs/images/working.png" alt="T3 Code working pill showing 4" height="30"> | <img src="docs/images/orca-working.png" alt="Orca working pill showing 4" height="30"> | Agents are running and nothing needs you. |
+| <img src="docs/images/approval.png" alt="T3 Code approval pill showing 4" height="30"> | <img src="docs/images/orca-approval.png" alt="Orca approval pill showing 4" height="30"> | An agent is waiting for your approval. |
+| <img src="docs/images/input.png" alt="T3 Code input pill showing 4" height="30"> | | A thread is waiting for your answer. |
+| <img src="docs/images/out-of-date.png" alt="T3 Code out of date pill" height="30"> | <img src="docs/images/orca-out-of-date.png" alt="Orca out of date pill" height="30"> | The plugin can't read the app's state. The tooltip has the error. |
+
+The T3 Code count is the active threads in your thread list. Subagents, side chats and workflow steps don't count, but a subagent's approval request shows on its thread.
+
+The Orca count is the agents that are working or waiting on you. Orca has one "needs you" state for permission prompts and questions, so both show as Approval.
+
+Hover a pill for each agent's status.
 
 ## Install
 
-Requires Noctalia 5 and `sqlite3` on your `PATH`.
+Requires Noctalia 5. The T3 Code pill needs `sqlite3` on your `PATH`. The Orca pill needs the Orca CLI, which Orca registers itself.
 
 ```sh
 noctalia msg plugins source add agent-pill git https://github.com/piexelated/agent-pill
 noctalia msg plugins enable piexelated/agent-pill
 ```
 
-Add Agent Pill to a bar in Noctalia's settings. For the black capsule shown above, define the widget in `config.toml` and put `t3_agents` in a bar section:
+Add the pills you want to a bar in Noctalia's settings. For the black capsules shown above, define the widgets in `config.toml` and put `t3_agents` and `orca_agents` in a bar section:
 
 ```toml
 [widget.t3_agents]
 type = "piexelated/agent-pill:agents"
 capsule_fill = "#000000"
+
+[widget.orca_agents]
+type = "piexelated/agent-pill:orca"
+capsule_fill = "#000000"
 ```
 
-## How it works?
+## How it works
 
-Every 2 seconds the widget runs one read-only query on `~/.t3/userdata/statev2.sqlite`. Works for now 
+Each pill polls every 2 seconds, and only while its app is running.
+
+- T3 Code: one read-only query on `~/.t3/userdata/statev2.sqlite`. That schema is internal to T3 Code, so an update can break the pill.
+- Orca: `orca agent list --json`.
 
 ## License
 
-MIT. Not affiliated with T3 Code or Noctalia; the T3 mark belongs to its owners.
+MIT. Not affiliated with T3 Code, Orca or Noctalia. Their marks belong to their owners.
