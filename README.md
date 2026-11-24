@@ -25,7 +25,7 @@ Each app gets its own pill. A pill hides when nothing is running.
 
 The T3 Code count is the active threads in your thread list. Subagents, side chats and workflow steps don't count, but a subagent's approval request shows on its thread.
 
-The Orca count is the agents that are working or waiting on you. Orca reports permission prompts and questions the same way, so both show as Approval.
+The Orca count is the agents that are working or waiting on you. An agent that has finished its turn and only has a background task running doesn't count, the same as in Orca. Orca reports permission prompts and questions the same way, so both show as Approval.
 
 Hover a pill for each agent's status.
 
@@ -55,7 +55,7 @@ capsule_fill = "#000000"
 Each pill polls every 2 seconds, and only while its app is running.
 
 - T3 Code: one read-only query on `~/.t3/userdata/statev2.sqlite`. That schema is internal to T3 Code, so an update can break the pill.
-- Orca: `orca agent list --json`.
+- Orca: `orca worktree ps --json`.
 
 ## License
 

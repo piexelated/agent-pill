@@ -15,6 +15,10 @@ local PHASE_BY_ORCA_STATE = {
   blocked = "approval",
 }
 
+-- An agent whose turn ended but which still has a background task running reports working with
+-- this mode. Orca shows it as monitoring, not working, so it does not count.
+local MONITORING_WORKING_MODE = "monitoring"
+
 local pill = Pill.new({
   name = "Orca",
   marks = {
@@ -44,16 +48,25 @@ local function orcaCliPath()
   return "orca"
 end
 
-local function agentTitle(agent)
-  return agent.title or agent.workspace or agent.agent or "Agent"
+local function agentTitle(agent, worktree)
+  return agent.conversationName or agent.displayName or agent.taskTitle or worktree.displayName or agent.agentType or "Agent"
 end
 
-local function activeAgents(orcaAgents)
+local function agentPhase(agent)
+  if agent.workingMode == MONITORING_WORKING_MODE then
+    return nil
+  end
+  return PHASE_BY_ORCA_STATE[agent.state]
+end
+
+local function activeAgents(worktrees)
   local agents = {}
-  for _, agent in orcaAgents do
-    local phase = PHASE_BY_ORCA_STATE[agent.state]
-    if phase then
-      table.insert(agents, { title = agentTitle(agent), phase = phase })
+  for _, worktree in worktrees do
+    for _, agent in worktree.agents or {} do
+      local phase = agentPhase(agent)
+      if phase then
+        table.insert(agents, { title = agentTitle(agent, worktree), phase = phase })
+      end
     end
   end
   table.sort(agents, function(left, right)
@@ -68,22 +81,23 @@ end
 local function stateFromCliResult(result)
   if result.exitCode ~= 0 or result.timedOut then
     local reason = noctalia.string.trim(result.stderr)
-    return Pill.stale(reason ~= "" and reason or "orca agent list failed")
+    return Pill.stale(reason ~= "" and reason or "orca worktree ps failed")
   end
 
   local response, decodeError = noctalia.json.decode(result.stdout)
   if not response then
     return Pill.stale(decodeError)
   end
-  if not response.ok or not response.result or not response.result.agents then
-    return Pill.stale("orca agent list returned no agents")
+  if not response.ok or not response.result or not response.result.worktrees then
+    return Pill.stale("orca worktree ps returned no worktrees")
   end
-  return Pill.active(activeAgents(response.result.agents))
+  return Pill.active(activeAgents(response.result.worktrees))
 end
 
 local function pollActiveAgents()
   pollInFlight = true
-  local started = noctalia.runAsync({ orcaCliPath(), "agent", "list", "--json" }, function(result)
+  -- agent list leaves out workingMode, so the agents come from the worktree summary.
+  local started = noctalia.runAsync({ orcaCliPath(), "worktree", "ps", "--json" }, function(result)
     pollInFlight = false
     pill.render(stateFromCliResult(result))
   end)
