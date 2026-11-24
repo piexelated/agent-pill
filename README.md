@@ -20,12 +20,12 @@ Each app gets its own pill. A pill hides when nothing is running.
 |---|---|---|
 | <img src="docs/images/working.png" alt="T3 Code working pill showing 4" height="30"> | <img src="docs/images/orca-working.png" alt="Orca working pill showing 4" height="30"> | Agents are running and nothing needs you. |
 | <img src="docs/images/approval.png" alt="T3 Code approval pill showing 4" height="30"> | <img src="docs/images/orca-approval.png" alt="Orca approval pill showing 4" height="30"> | An agent is waiting for your approval. |
-| <img src="docs/images/input.png" alt="T3 Code input pill showing 4" height="30"> | | A thread is waiting for your answer. |
+| <img src="docs/images/input.png" alt="T3 Code input pill showing 4" height="30"> | Shows as Approval | A thread is waiting for your answer. |
 | <img src="docs/images/out-of-date.png" alt="T3 Code out of date pill" height="30"> | <img src="docs/images/orca-out-of-date.png" alt="Orca out of date pill" height="30"> | The plugin can't read the app's state. The tooltip has the error. |
 
 The T3 Code count is the active threads in your thread list. Subagents, side chats and workflow steps don't count, but a subagent's approval request shows on its thread.
 
-The Orca count is the agents that are working or waiting on you. Orca has one "needs you" state for permission prompts and questions, so both show as Approval.
+The Orca count is the agents that are working or waiting on you. Orca reports permission prompts and questions the same way, so both show as Approval.
 
 Hover a pill for each agent's status.
 
