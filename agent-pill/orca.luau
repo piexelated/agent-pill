@@ -7,6 +7,11 @@ local ORCA_RUNTIME_PATH = ORCA_CONFIG_DIR .. "/orca-runtime.json"
 -- Orca registers its CLI here on Linux; the bar's PATH usually lacks it.
 local ORCA_CLI_SHIM_PATH = ORCA_CONFIG_DIR .. "/linux-orca-cli-shim/orca"
 
+-- worktree ps only covers the runtime it asks. It lists each paired server it left out as
+-- hostId "runtime:<environment id>" with selector "--environment <name>".
+local PAIRED_SERVER_HOST_ID_PREFIX = "runtime:"
+local ENVIRONMENT_SELECTOR_PREFIX = "--environment "
+
 -- Orca folds subagents into their lead agent and has one "needs you" state for permission
 -- prompts and questions alike, so waiting and blocked both show as approval.
 local PHASE_BY_ORCA_STATE = {
@@ -48,8 +53,12 @@ local function orcaCliPath()
   return "orca"
 end
 
-local function agentTitle(agent, worktree)
-  return agent.conversationName or agent.displayName or agent.taskTitle or worktree.displayName or agent.agentType or "Agent"
+local function agentTitle(agent, worktree, serverName)
+  local title = agent.conversationName or agent.displayName or agent.taskTitle or worktree.displayName or agent.agentType or "Agent"
+  if serverName then
+    return string.format("%s · %s", title, serverName)
+  end
+  return title
 end
 
 local function agentPhase(agent)
@@ -59,16 +68,18 @@ local function agentPhase(agent)
   return PHASE_BY_ORCA_STATE[agent.state]
 end
 
-local function activeAgents(worktrees)
-  local agents = {}
+local function collectActiveAgents(into, worktrees, serverName)
   for _, worktree in worktrees do
     for _, agent in worktree.agents or {} do
       local phase = agentPhase(agent)
       if phase then
-        table.insert(agents, { title = agentTitle(agent, worktree), phase = phase })
+        table.insert(into, { title = agentTitle(agent, worktree, serverName), phase = phase })
       end
     end
   end
+end
+
+local function sortedByAttention(agents)
   table.sort(agents, function(left, right)
     if (left.phase == "working") ~= (right.phase == "working") then
       return right.phase == "working"
@@ -78,33 +89,109 @@ local function activeAgents(worktrees)
   return agents
 end
 
-local function stateFromCliResult(result)
-  if result.exitCode ~= 0 or result.timedOut then
-    local reason = noctalia.string.trim(result.stderr)
-    return Pill.stale(reason ~= "" and reason or "orca worktree ps failed")
+local function worktreePsCommand(environmentId)
+  -- agent list leaves out workingMode, so the agents come from the worktree summary.
+  local command = { orcaCliPath(), "worktree", "ps", "--json" }
+  if environmentId then
+    table.insert(command, "--environment")
+    table.insert(command, environmentId)
+  end
+  return command
+end
+
+-- Returns the worktree summary, or nil and why it could not be read.
+local function decodeWorktreeSummary(result)
+  if result.timedOut then
+    return nil, "orca worktree ps timed out"
   end
 
-  local response, decodeError = noctalia.json.decode(result.stdout)
-  if not response then
-    return Pill.stale(decodeError)
+  local response = noctalia.json.decode(result.stdout)
+  if response and response.error and response.error.message then
+    return nil, response.error.message
   end
-  if not response.ok or not response.result or not response.result.worktrees then
-    return Pill.stale("orca worktree ps returned no worktrees")
+  if result.exitCode ~= 0 then
+    local reason = noctalia.string.trim(result.stderr)
+    return nil, reason ~= "" and reason or "orca worktree ps failed"
   end
-  return Pill.active(activeAgents(response.result.worktrees))
+  if not response or not response.ok or not response.result or not response.result.worktrees then
+    return nil, "orca worktree ps returned no worktrees"
+  end
+  return response.result
+end
+
+local function pairedServersLeftOut(hostScope)
+  local servers = {}
+  for _, omitted in (hostScope and hostScope.omittedHostSelectors) or {} do
+    local hostId, selector = omitted.hostId or "", omitted.selector or ""
+    if string.sub(hostId, 1, #PAIRED_SERVER_HOST_ID_PREFIX) == PAIRED_SERVER_HOST_ID_PREFIX then
+      local environmentId = string.sub(hostId, #PAIRED_SERVER_HOST_ID_PREFIX + 1)
+      local name = environmentId
+      if string.sub(selector, 1, #ENVIRONMENT_SELECTOR_PREFIX) == ENVIRONMENT_SELECTOR_PREFIX then
+        name = string.sub(selector, #ENVIRONMENT_SELECTOR_PREFIX + 1)
+      end
+      table.insert(servers, { environmentId = environmentId, name = name })
+    end
+  end
+  return servers
+end
+
+local function finishPoll(state)
+  pollInFlight = false
+  pill.render(state)
+end
+
+-- A paired server that cannot be read is named in the tooltip instead of hiding the others.
+local function pollPairedServers(localSummary)
+  local agents = {}
+  collectActiveAgents(agents, localSummary.worktrees, nil)
+
+  local servers = pairedServersLeftOut(localSummary.hostScope)
+  local unreachableServers = {}
+  local pendingCount = #servers
+  if pendingCount == 0 then
+    finishPoll(Pill.active(sortedByAttention(agents)))
+    return
+  end
+
+  local function settleServer()
+    pendingCount -= 1
+    if pendingCount > 0 then
+      return
+    end
+    table.sort(unreachableServers)
+    finishPoll(Pill.active(sortedByAttention(agents), unreachableServers))
+  end
+
+  for _, server in servers do
+    local started = noctalia.runAsync(worktreePsCommand(server.environmentId), function(result)
+      local summary = decodeWorktreeSummary(result)
+      if summary then
+        collectActiveAgents(agents, summary.worktrees, server.name)
+      else
+        table.insert(unreachableServers, server.name)
+      end
+      settleServer()
+    end)
+    if not started then
+      table.insert(unreachableServers, server.name)
+      settleServer()
+    end
+  end
 end
 
 local function pollActiveAgents()
   pollInFlight = true
-  -- agent list leaves out workingMode, so the agents come from the worktree summary.
-  local started = noctalia.runAsync({ orcaCliPath(), "worktree", "ps", "--json" }, function(result)
-    pollInFlight = false
-    pill.render(stateFromCliResult(result))
+  local started = noctalia.runAsync(worktreePsCommand(nil), function(result)
+    local localSummary, failure = decodeWorktreeSummary(result)
+    if not localSummary then
+      finishPoll(Pill.stale(failure))
+      return
+    end
+    pollPairedServers(localSummary)
   end)
 
   if not started then
-    pollInFlight = false
-    pill.render(Pill.stale("orca CLI not found"))
+    finishPoll(Pill.stale("orca CLI not found"))
   end
 end
 

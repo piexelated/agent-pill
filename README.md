@@ -55,7 +55,7 @@ capsule_fill = "#000000"
 Each pill polls every 2 seconds, and only while its app is running.
 
 - T3 Code: one read-only query on `~/.t3/userdata/statev2.sqlite`. That schema is internal to T3 Code, so an update can break the pill.
-- Orca: `orca worktree ps --json`.
+- Orca: `orca worktree ps --json` on this machine, then once per paired Orca server it leaves out. Remote agents carry the server name in the tooltip, and a server that can't be read shows as Unreachable.
 
 ## License
 

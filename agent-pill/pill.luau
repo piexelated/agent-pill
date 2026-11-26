@@ -6,6 +6,7 @@ local WORKING_GLYPH = "circle-dashed"
 local WORKING_GLYPH_SIZE_PX = 14
 local ROW_GAP_PX = 6
 local MAX_TOOLTIP_ROWS = 8
+local UNREACHABLE_STATUS = "Unreachable"
 
 -- Tints and labels follow T3 Code's AgentActivity live activity.
 local PHASE_STYLES = {
@@ -34,7 +35,7 @@ local function summaryLabel(agents)
   return string.format("%s · %d %s attention", summary, needingAttention, needingAttention == 1 and "needs" or "need")
 end
 
-local function tooltipRows(appName, agents)
+local function tooltipRows(appName, agents, unreachableSources)
   local rows = { { key = appName, value = summaryLabel(agents) } }
   for index = 1, math.min(#agents, MAX_TOOLTIP_ROWS) do
     table.insert(rows, { key = agents[index].title, value = PHASE_STYLES[agents[index].phase].status })
@@ -42,6 +43,9 @@ local function tooltipRows(appName, agents)
   local hiddenCount = #agents - MAX_TOOLTIP_ROWS
   if hiddenCount > 0 then
     table.insert(rows, { key = "More", value = string.format("+%d", hiddenCount) })
+  end
+  for _, source in unreachableSources do
+    table.insert(rows, { key = source, value = UNREACHABLE_STATUS })
   end
   return rows
 end
@@ -86,6 +90,9 @@ local function stateKey(state)
   for _, agent in state.agents do
     table.insert(parts, agent.phase .. "\0" .. agent.title)
   end
+  for _, source in state.unreachableSources do
+    table.insert(parts, "unreachable\0" .. source)
+  end
   return "active:" .. table.concat(parts, "\0")
 end
 
@@ -100,11 +107,12 @@ function Pill.stale(reason)
 end
 
 -- agents: rows of { title, phase }, phase being working, approval or input; attention rows first.
-function Pill.active(agents)
+-- unreachableSources: names of places the agents could not be read from, listed in the tooltip.
+function Pill.active(agents, unreachableSources)
   if #agents == 0 then
     return Pill.idle()
   end
-  return { kind = "active", agents = agents }
+  return { kind = "active", agents = agents, unreachableSources = unreachableSources or {} }
 end
 
 -- app: { name, marks = { working, approval, input, stale } } with mark paths relative to the plugin.
@@ -122,7 +130,7 @@ function Pill.new(app)
       barWidget.setVisible(false)
     elseif state.kind == "active" then
       local phase = state.agents[1].phase
-      showPill(app.marks[phase], PHASE_STYLES[phase], #state.agents, tooltipRows(app.name, state.agents))
+      showPill(app.marks[phase], PHASE_STYLES[phase], #state.agents, tooltipRows(app.name, state.agents, state.unreachableSources))
     else
       noctalia.log(string.format("cannot read %s state: %s", app.name, state.reason))
       showPill(app.marks.stale, PHASE_STYLES.stale, nil, state.reason)
